@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classement | Chatlenge</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans flex flex-col min-h-screen">
+
+  <!-- Barre du haut -->
+  <nav class="flex justify-between items-center p-4 bg-gray-800 shadow-md">
+    <h1 class="text-2xl font-bold text-indigo-400 cursor-pointer" onclick="window.location.href='index.html'">Chatlenge 🏆</h1>
+    <button onclick="window.location.href='chat.html'" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-lg font-semibold">Retour au Chat</button>
+  </nav>
+
+  <!-- Contenu principal -->
+  <main class="flex-grow flex flex-col items-center justify-center p-4">
+    <h2 class="text-3xl font-bold text-indigo-400 mb-6">Classement global</h2>
+
+    <div id="leaderboard" class="w-full max-w-2xl bg-gray-800 rounded-2xl shadow-lg p-6">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b border-gray-700">
+            <th class="p-3">#</th>
+            <th class="p-3">Joueur</th>
+            <th class="p-3 text-right">Points</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "COLLE_TA_CLE_ICI",
+      authDomain: "chatlenge.firebaseapp.com",
+      projectId: "chatlenge",
+      storageBucket: "chatlenge.appspot.com",
+      messagingSenderId: "XXXXXXX",
+      appId: "XXXXXXX"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const tbody = document.getElementById("leaderboardBody");
+    const q = query(collection(db, "users"), orderBy("points", "desc"));
+
+    onSnapshot(q, (snapshot) => {
+      tbody.innerHTML = "";
+      let rank = 1;
+      snapshot.forEach(doc => {
+        const u = doc.data();
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-gray-700 hover:bg-gray-700 transition";
+        tr.innerHTML = `
+          <td class="p-3 text-gray-400">${rank}</td>
+          <td class="p-3 font-semibold">${u.username}</td>
+          <td class="p-3 text-right text-indigo-300 font-bold">${u.points}</td>
+        `;
+        tbody.appendChild(tr);
+        rank++;
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatlenge — Profil</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+  <!-- Navbar -->
+  <nav class="flex justify-between items-center p-4 bg-gray-800 shadow-md">
+    <div class="flex items-center space-x-4">
+      <h1 class="text-2xl font-bold text-indigo-400 cursor-pointer" onclick="window.location.href='index.html'">Chatlenge 💬</h1>
+      <div id="userInfo" class="text-gray-300 text-sm"></div>
+    </div>
+    <div class="space-x-3">
+      <button onclick="window.location.href='chat.html'" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md">Chat</button>
+      <button onclick="window.location.href='amis.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Amis</button>
+      <button onclick="window.location.href='groupes.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Groupes</button>
+      <button onclick="window.location.href='classement.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Classement</button>
+      <button id="logoutBtn" class="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-md">Déconnexion</button>
+    </div>
+  </nav>
+
+  <!-- Contenu principal -->
+  <main class="flex-1 flex flex-col items-center justify-center p-6">
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md text-center">
+      <h2 class="text-2xl font-bold text-indigo-400 mb-4">👤 Mon Profil</h2>
+
+      <!-- Photo -->
+      <img id="profilPhoto" src="default.jpg" alt="Photo de profil"
+           class="w-32 h-32 rounded-full object-cover mx-auto mb-3 border-4 border-indigo-500" />
+
+      <!-- Lien de photo -->
+      <div class="mb-3">
+        <input id="photoURL" type="text" placeholder="URL de ta photo (https://...)"
+               class="w-full bg-gray-700 p-2 rounded-md text-sm focus:ring-2 focus:ring-indigo-500">
+        <button id="savePhotoBtn" class="bg-indigo-600 hover:bg-indigo-700 mt-2 px-3 py-1 rounded-md">Mettre à jour la photo</button>
+      </div>
+
+      <!-- Bio -->
+      <textarea id="bioInput" rows="3" placeholder="Ta description..."
+                class="w-full bg-gray-700 p-3 rounded-md mb-3 focus:ring-2 focus:ring-indigo-500"></textarea>
+      <button id="saveBioBtn" class="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-md">Enregistrer la bio</button>
+
+      <!-- Infos -->
+      <div id="profilInfos" class="mt-6 text-gray-300 text-sm space-y-1"></div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, doc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+    apiKey: "AIzaSyCj5WZ9CLQs8syiptj8YuYe2qUN2JuXzPU",
+    authDomain: "chatlenge-713ad.firebaseapp.com",
+    projectId: "chatlenge-713ad",
+    storageBucket: "chatlenge-713ad.firebasestorage.app",
+    messagingSenderId: "186225402929",
+    appId: "1:186225402929:web:00c68622f68aac5ba12110"
+  };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const user = JSON.parse(localStorage.getItem("connectedUser"));
+    if (!user) window.location.href = "login.html";
+
+    const refUser = doc(db, "users", user.username);
+    const profilPhoto = document.getElementById("profilPhoto");
+    const photoURL = document.getElementById("photoURL");
+    const savePhotoBtn = document.getElementById("savePhotoBtn");
+    const bioInput = document.getElementById("bioInput");
+    const saveBioBtn = document.getElementById("saveBioBtn");
+    const profilInfos = document.getElementById("profilInfos");
+    document.getElementById("userInfo").innerHTML = `<span class='font-semibold text-indigo-300'>${user.username}</span>`;
+
+    // 🔁 Écoute en direct du profil
+    onSnapshot(refUser, snap => {
+      const data = snap.data();
+      if (!data) return;
+      profilPhoto.src = data.photo || "default.jpg";
+      bioInput.value = data.bio || "";
+      profilInfos.innerHTML = `
+        <p><strong>Rôle :</strong> ${data.role || "user"}</p>
+        <p><strong>Points :</strong> ${data.points || 0}</p>
+      `;
+    });
+
+    // 🖼️ Mettre à jour photo via URL
+    savePhotoBtn.addEventListener("click", async () => {
+      const url = photoURL.value.trim();
+      if (!url.startsWith("http")) return alert("⚠️ Lien invalide !");
+      await updateDoc(refUser, { photo: url });
+      profilPhoto.src = url;
+      photoURL.value = "";
+      alert("✅ Photo mise à jour !");
+    });
+
+    // ✏️ Mettre à jour bio
+    saveBioBtn.addEventListener("click", async () => {
+      const bio = bioInput.value.trim();
+      await updateDoc(refUser, { bio });
+      alert("✅ Bio enregistrée !");
+    });
+
+    // 🚪 Déconnexion
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("connectedUser");
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>

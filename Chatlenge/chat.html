@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatlenge — Chat Global</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white flex flex-col h-screen">
+  <!-- Barre navigation -->
+  <nav class="flex justify-between items-center p-4 bg-gray-800 shadow-md">
+    <h1 class="text-2xl font-bold text-indigo-400">Chat Global 💬</h1>
+    <div class="space-x-3">
+      <button onclick="window.location.href='profil.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Mon Profil</button>
+      <button onclick="window.location.href='classement.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Classement</button>
+      <button onclick="window.location.href='amis.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Amis</button>
+      <button onclick="window.location.href='groupes.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Groupes</button>
+      <button id="logoutBtn" class="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-md">Déconnexion</button>
+    </div>
+  </nav>
+
+  <!-- Zone de chat -->
+  <main id="chatBox" class="flex-1 overflow-y-auto p-4 space-y-3"></main>
+
+  <!-- Zone d’envoi -->
+  <footer class="p-3 bg-gray-800 flex">
+    <input id="msgInput" type="text" placeholder="Écrire un message..." class="flex-1 bg-gray-700 p-2 rounded-l-md focus:ring-2 focus:ring-indigo-500">
+    <button id="sendMsg" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-r-md">Envoyer</button>
+    <button id="defiBtn" class="ml-2 bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded-md">🎯 Défi</button>
+  </footer>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { 
+      getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCj5WZ9CLQs8syiptj8YuYe2qUN2JuXzPU",
+    authDomain: "chatlenge-713ad.firebaseapp.com",
+    projectId: "chatlenge-713ad",
+    storageBucket: "chatlenge-713ad.firebasestorage.app",
+    messagingSenderId: "186225402929",
+    appId: "1:186225402929:web:00c68622f68aac5ba12110"
+  };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const user = JSON.parse(localStorage.getItem("connectedUser"));
+    if (!user) window.location.href = "login.html";
+
+    const chatBox = document.getElementById("chatBox");
+    const msgInput = document.getElementById("msgInput");
+    const sendMsg = document.getElementById("sendMsg");
+    const defiBtn = document.getElementById("defiBtn");
+
+    // 🔁 Écoute du chat global
+    const chatQuery = query(collection(db, "chat"), orderBy("timestamp"));
+    onSnapshot(chatQuery, snapshot => {
+      chatBox.innerHTML = "";
+      snapshot.forEach(doc => {
+        const msg = doc.data();
+        const isSelf = msg.username === user.username;
+        const align = isSelf ? "text-right" : "text-left";
+        const color = isSelf ? "text-indigo-400" : "text-green-400";
+
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `${align}`;
+        msgDiv.innerHTML = `
+          <p>
+            <span class="font-semibold ${color} cursor-pointer hover:underline"
+                  onclick="window.location.href='profil_user.html?user=${msg.username}'">
+              ${msg.username}
+            </span> :
+            ${msg.text}
+          </p>
+        `;
+        chatBox.appendChild(msgDiv);
+      });
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+
+    // ✉️ Envoi de message
+    sendMsg.addEventListener("click", async () => {
+      const text = msgInput.value.trim();
+      if (!text) return;
+      await addDoc(collection(db, "chat"), {
+        username: user.username,
+        text,
+        timestamp: serverTimestamp()
+      });
+      msgInput.value = "";
+    });
+
+    // 🎯 Défis (ouvre mini modal)
+    defiBtn.addEventListener("click", () => {
+      alert("🚧 Le système de défis arrive bientôt !");
+    });
+
+    // 🚪 Déconnexion
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("connectedUser");
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>

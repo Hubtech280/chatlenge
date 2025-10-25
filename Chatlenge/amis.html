@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatlenge — Amis 👥</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+  <!-- 🔝 Barre de navigation -->
+  <nav class="flex justify-between items-center p-4 bg-gray-800 shadow-md">
+    <div class="flex items-center space-x-4">
+      <h1 class="text-2xl font-bold text-indigo-400 cursor-pointer" onclick="window.location.href='index.html'">
+        Chatlenge 💬
+      </h1>
+      <div id="userInfo" class="text-gray-300 text-sm"></div>
+    </div>
+    <div class="space-x-3">
+      <button onclick="window.location.href='chat.html'" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md">Chat</button>
+      <button onclick="window.location.href='groupes.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Groupes</button>
+      <button onclick="window.location.href='classement.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Classement</button>
+      <button onclick="window.location.href='profil.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Profil</button>
+      <button id="logoutBtn" class="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-md">Déconnexion</button>
+    </div>
+  </nav>
+
+  <!-- 💬 Contenu -->
+  <main class="flex-1 p-6 max-w-4xl mx-auto">
+    <!-- 📩 Demandes reçues -->
+    <section class="bg-gray-800 rounded-xl p-4 mb-6 shadow-lg">
+      <h2 class="text-xl font-bold text-yellow-400 mb-3">📨 Demandes d’amis reçues</h2>
+      <div id="demandesZone" class="space-y-2 min-h-[80px]"></div>
+    </section>
+
+    <!-- 👥 Mes amis -->
+    <section class="bg-gray-800 rounded-xl p-4 mb-6 shadow-lg">
+      <h2 class="text-xl font-bold text-indigo-400 mb-3">👥 Mes amis</h2>
+      <div id="amisList" class="space-y-2 min-h-[80px]"></div>
+    </section>
+
+    <!-- ➕ Ajouter un ami -->
+    <section class="bg-gray-800 rounded-xl p-4 shadow-lg">
+      <h2 class="text-xl font-bold text-green-400 mb-3">➕ Ajouter un ami</h2>
+      <div class="flex space-x-2">
+        <input id="amiInput" type="text" placeholder="Pseudo de ton ami..." class="flex-1 bg-gray-700 p-2 rounded-md focus:ring-2 focus:ring-indigo-500">
+        <button id="ajouterBtn" class="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-md">Envoyer</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ⚙️ Script principal -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+      getFirestore, doc, getDoc, updateDoc, setDoc, arrayUnion, onSnapshot,
+      collection, addDoc, deleteDoc, query, where, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCj5WZ9CLQs8syiptj8YuYe2qUN2JuXzPU",
+    authDomain: "chatlenge-713ad.firebaseapp.com",
+    projectId: "chatlenge-713ad",
+    storageBucket: "chatlenge-713ad.firebasestorage.app",
+    messagingSenderId: "186225402929",
+    appId: "1:186225402929:web:00c68622f68aac5ba12110"
+  };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const user = JSON.parse(localStorage.getItem("connectedUser"));
+    if (!user) window.location.href = "login.html";
+
+    document.getElementById("userInfo").innerHTML = `<span class='font-semibold text-indigo-300'>${user.username}</span>`;
+
+    const meRef = doc(db, "users", user.username);
+    const amisList = document.getElementById("amisList");
+    const demandesZone = document.getElementById("demandesZone");
+
+    // 🔁 Écoute en direct des amis
+    onSnapshot(meRef, snap => {
+      amisList.innerHTML = "";
+      const data = snap.data();
+      const amis = data?.amis || [];
+      if (amis.length === 0) {
+        amisList.innerHTML = `<p class='text-gray-400 text-sm text-center'>Aucun ami pour le moment.</p>`;
+      } else {
+        amis.forEach(a => {
+          const div = document.createElement("div");
+          div.className = "bg-gray-700 p-3 rounded-lg";
+          div.innerHTML = `<strong class='text-indigo-300'>${a}</strong>`;
+          amisList.appendChild(div);
+        });
+      }
+    });
+
+    // 📩 Demandes reçues
+    const demandesQuery = query(collection(db, "friend_requests"), where("to", "==", user.username));
+    onSnapshot(demandesQuery, snapshot => {
+      demandesZone.innerHTML = "";
+      if (snapshot.empty) {
+        demandesZone.innerHTML = `<p class='text-gray-400 text-sm text-center'>Aucune demande d'ami reçue.</p>`;
+        return;
+      }
+
+      snapshot.forEach(docSnap => {
+        const demande = docSnap.data();
+        const div = document.createElement("div");
+        div.className = "bg-gray-700 p-3 rounded-lg flex justify-between items-center";
+        div.innerHTML = `
+          <div>
+            <p class="font-semibold text-indigo-300">${demande.from}</p>
+            <p class="text-gray-400 text-xs">t’a envoyé une demande d’ami</p>
+          </div>
+          <div class="space-x-2">
+            <button class="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-sm acceptAmi" data-id="${docSnap.id}" data-from="${demande.from}">✅</button>
+            <button class="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-sm refuseAmi" data-id="${docSnap.id}">❌</button>
+          </div>
+        `;
+        demandesZone.appendChild(div);
+      });
+
+      // Actions accepter/refuser
+      document.querySelectorAll(".acceptAmi").forEach(btn => {
+        btn.addEventListener("click", async e => {
+          const id = e.target.dataset.id;
+          const fromUser = e.target.dataset.from;
+          const refReq = doc(db, "friend_requests", id);
+
+          await updateDoc(meRef, { amis: arrayUnion(fromUser) });
+          await updateDoc(doc(db, "users", fromUser), { amis: arrayUnion(user.username) });
+          await deleteDoc(refReq);
+          alert(`✅ Tu es maintenant ami avec ${fromUser} !`);
+        });
+      });
+
+      document.querySelectorAll(".refuseAmi").forEach(btn => {
+        btn.addEventListener("click", async e => {
+          const id = e.target.dataset.id;
+          await deleteDoc(doc(db, "friend_requests", id));
+          alert("❌ Demande refusée.");
+        });
+      });
+    });
+
+    // ➕ Envoyer une demande
+    document.getElementById("ajouterBtn").addEventListener("click", async () => {
+      const cible = document.getElementById("amiInput").value.trim();
+      if (!cible || cible === user.username) return alert("Pseudo invalide.");
+
+      const cibleSnap = await getDoc(doc(db, "users", cible));
+      if (!cibleSnap.exists()) return alert("Utilisateur introuvable.");
+
+      await addDoc(collection(db, "friend_requests"), {
+        from: user.username,
+        to: cible,
+        status: "pending",
+        timestamp: serverTimestamp()
+      });
+      alert(`📨 Demande envoyée à ${cible} !`);
+      document.getElementById("amiInput").value = "";
+    });
+
+    // 🚪 Déconnexion
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("connectedUser");
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>
