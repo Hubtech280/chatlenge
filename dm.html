@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatlenge — Messages Privés</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white flex flex-col h-screen">
+  <!-- Navbar -->
+  <nav class="bg-gray-800 p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold text-indigo-400 cursor-pointer" onclick="window.location.href='chat.html'">⬅ Retour</h1>
+    <h2 id="chatWith" class="text-lg text-yellow-400 font-semibold"></h2>
+    <div></div>
+  </nav>
+
+  <!-- Zone de messages -->
+  <main id="dmBox" class="flex-1 overflow-y-auto p-4 space-y-3"></main>
+
+  <!-- Zone de saisie -->
+  <footer class="p-3 bg-gray-800 flex">
+    <input id="dmInput" type="text" placeholder="Écrire un message..." class="flex-1 bg-gray-700 p-2 rounded-l-md focus:ring-2 focus:ring-indigo-500">
+    <button id="sendDM" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-r-md">Envoyer</button>
+  </footer>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { 
+      getFirestore, collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp 
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCj5WZ9CLQs8syiptj8YuYe2qUN2JuXzPU",
+    authDomain: "chatlenge-713ad.firebaseapp.com",
+    projectId: "chatlenge-713ad",
+    storageBucket: "chatlenge-713ad.firebasestorage.app",
+    messagingSenderId: "186225402929",
+    appId: "1:186225402929:web:00c68622f68aac5ba12110"
+  };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const user = JSON.parse(localStorage.getItem("connectedUser"));
+    const params = new URLSearchParams(window.location.search);
+    const target = params.get("to");
+
+    const dmBox = document.getElementById("dmBox");
+    const dmInput = document.getElementById("dmInput");
+    const sendBtn = document.getElementById("sendDM");
+    const chatWith = document.getElementById("chatWith");
+
+    if (!user || !target) window.location.href = "chat.html";
+
+    chatWith.textContent = `💬 Discussion avec ${target}`;
+
+    // 🔁 Écoute en direct : tous les messages entre les deux utilisateurs
+    const messagesQuery = query(
+      collection(db, "dm"),
+      orderBy("timestamp", "asc")
+    );
+
+    onSnapshot(messagesQuery, snapshot => {
+      dmBox.innerHTML = "";
+      snapshot.forEach(doc => {
+        const msg = doc.data();
+        // On affiche seulement les messages entre les deux utilisateurs
+        if (
+          (msg.from === user.username && msg.to === target) ||
+          (msg.from === target && msg.to === user.username)
+        ) {
+          const align = msg.from === user.username ? "text-right" : "text-left";
+          const color = msg.from === user.username ? "text-indigo-400" : "text-green-400";
+          const bg = msg.from === user.username ? "bg-indigo-800" : "bg-gray-700";
+          dmBox.innerHTML += `
+            <div class="${align}">
+              <p class="inline-block ${bg} rounded-lg px-3 py-2 m-1">${msg.text}</p><br>
+              <span class="text-xs text-gray-400">${msg.from}</span>
+            </div>
+          `;
+        }
+      });
+      dmBox.scrollTop = dmBox.scrollHeight;
+    });
+
+    // ✉️ Envoi message
+    sendBtn.addEventListener("click", async () => {
+      const text = dmInput.value.trim();
+      if (!text) return;
+      await addDoc(collection(db, "dm"), {
+        from: user.username,
+        to: target,
+        text,
+        timestamp: serverTimestamp()
+      });
+      dmInput.value = "";
+    });
+  </script>
+</body>
+</html>

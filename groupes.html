@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatlenge — Groupes 👥</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+
+  <!-- 🔝 Barre de navigation -->
+  <nav class="flex justify-between items-center p-4 bg-gray-800 shadow-md">
+    <div class="flex items-center space-x-4">
+      <h1 class="text-2xl font-bold text-indigo-400 cursor-pointer" onclick="window.location.href='index.html'">
+        Chatlenge 💬
+      </h1>
+      <div id="userInfo" class="text-gray-300 text-sm"></div>
+    </div>
+
+    <div class="space-x-3">
+      <button onclick="window.location.href='chat.html'" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md">Chat global</button>
+      <button onclick="window.location.href='amis.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Amis</button>
+      <button onclick="window.location.href='classement.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Classement</button>
+      <button id="logoutBtn" class="px-3 py-2 bg-red-600 hover:bg-red-700 rounded-md">Déconnexion</button>
+    </div>
+  </nav>
+
+  <!-- 💼 Contenu principal -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto w-full">
+
+    <!-- 📂 Colonne gauche : Mes groupes + Création -->
+    <section class="bg-gray-800 rounded-xl p-4 flex flex-col shadow-lg">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-xl font-bold text-indigo-400">👥 Mes groupes</h2>
+        <button id="newGroupBtn" class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded-md text-sm font-semibold">+ Créer</button>
+      </div>
+
+      <div id="groupList" class="space-y-2 text-sm flex-1 overflow-y-auto min-h-[200px] max-h-[50vh]">
+        <p class="text-gray-400 text-center mt-6">Chargement...</p>
+      </div>
+    </section>
+
+    <!-- 💬 Colonne centre : Chat du groupe sélectionné -->
+    <section class="bg-gray-800 rounded-xl p-4 flex flex-col shadow-lg lg:col-span-2">
+      <div id="groupHeader" class="mb-4">
+        <h2 class="text-xl font-bold text-indigo-400" id="groupName">Sélectionne un groupe</h2>
+        <p class="text-gray-400 text-sm" id="groupDesc"></p>
+        <p class="text-gray-500 text-xs" id="groupMembers"></p>
+      </div>
+
+      <div id="groupMessages" class="flex-1 overflow-y-auto bg-gray-900 border border-gray-700 rounded-lg p-3 min-h-[250px] max-h-[50vh] space-y-2 text-sm">
+        <p class="text-gray-500 text-center mt-10">Aucun groupe sélectionné.</p>
+      </div>
+
+      <form id="groupChatForm" class="flex space-x-2 mt-4">
+        <input id="groupMessageInput" type="text" placeholder="Message au groupe..." class="flex-1 p-2 rounded-md bg-gray-700 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500" disabled>
+        <button type="submit" class="bg-indigo-600 px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-40" disabled>Envoyer</button>
+      </form>
+
+      <div class="mt-4 flex justify-end">
+        <button id="inviteBtn" class="bg-yellow-600 hover:bg-yellow-700 px-3 py-2 rounded-md text-sm font-semibold disabled:opacity-40" disabled>➕ Inviter un ami</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ➕ Modale création groupe -->
+  <div id="createGroupModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div class="bg-gray-800 p-6 rounded-lg w-96 shadow-xl">
+      <h2 class="text-xl font-bold text-indigo-400 mb-4 text-center">Créer un groupe</h2>
+      <input id="groupNomInput" class="w-full bg-gray-700 p-2 rounded mb-3" placeholder="Nom du groupe">
+      <textarea id="groupDescInput" class="w-full bg-gray-700 p-2 rounded mb-3" placeholder="Description du groupe (optionnel)"></textarea>
+      <button id="createGroupConfirm" class="w-full bg-green-600 hover:bg-green-700 py-2 rounded font-semibold mb-2">Créer</button>
+      <button id="createGroupCancel" class="w-full bg-gray-600 hover:bg-gray-700 py-2 rounded">Annuler</button>
+    </div>
+  </div>
+
+  <!-- 🤝 Modale invitation -->
+  <div id="inviteModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+    <div class="bg-gray-800 p-6 rounded-lg w-96 shadow-xl">
+      <h2 class="text-xl font-bold text-yellow-400 mb-4 text-center">Inviter un ami</h2>
+      <p class="text-gray-400 text-sm mb-2">Choisis un ami à ajouter dans ce groupe :</p>
+      <select id="inviteSelect" class="w-full bg-gray-700 p-2 rounded mb-3"></select>
+      <button id="inviteConfirm" class="w-full bg-yellow-600 hover:bg-yellow-700 py-2 rounded font-semibold mb-2">Inviter</button>
+      <button id="inviteCancel" class="w-full bg-gray-600 hover:bg-gray-700 py-2 rounded">Annuler</button>
+    </div>
+  </div>
+
+  <!-- ⚙️ Script principal -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import {
+      getFirestore,
+      doc, getDoc, setDoc, updateDoc,
+      arrayUnion,
+      onSnapshot,
+      collection, addDoc, query, where, orderBy, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    window.addEventListener("DOMContentLoaded", async () => {
+
+      // 1. INIT FIREBASE
+  const firebaseConfig = {
+    apiKey: "AIzaSyCj5WZ9CLQs8syiptj8YuYe2qUN2JuXzPU",
+    authDomain: "chatlenge-713ad.firebaseapp.com",
+    projectId: "chatlenge-713ad",
+    storageBucket: "chatlenge-713ad.firebasestorage.app",
+    messagingSenderId: "186225402929",
+    appId: "1:186225402929:web:00c68622f68aac5ba12110"
+  };
+
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      // 2. RÉCUP UTILISATEUR CONNECTÉ
+      const user = JSON.parse(localStorage.getItem("connectedUser"));
+      if (!user) return (window.location.href = "login.html");
+
+      // affichage du pseudo en haut
+      const userInfoDiv = document.getElementById("userInfo");
+      userInfoDiv.innerHTML = `<span class="font-semibold text-indigo-300">${user.username}</span>`;
+
+      // s'assurer que le user a un doc dans "users"
+      const meRef = doc(db, "users", user.username);
+      const meSnap = await getDoc(meRef);
+      if (!meSnap.exists()) {
+        await setDoc(meRef, {
+          username: user.username,
+          email: user.email,
+          amis: [],
+          points: user.points || 0,
+          description: "Nouveau sur Chatlenge 👋",
+          photo: ""
+        });
+      }
+
+      // 3. RÉFÉRENCES ÉLÉMENTS UI
+      const groupListDiv = document.getElementById("groupList");
+      const groupMessagesDiv = document.getElementById("groupMessages");
+      const groupNameEl = document.getElementById("groupName");
+      const groupDescEl = document.getElementById("groupDesc");
+      const groupMembersEl = document.getElementById("groupMembers");
+      const groupChatForm = document.getElementById("groupChatForm");
+      const groupMessageInput = document.getElementById("groupMessageInput");
+      const inviteBtn = document.getElementById("inviteBtn");
+
+      const createGroupModal = document.getElementById("createGroupModal");
+      const newGroupBtn = document.getElementById("newGroupBtn");
+      const createGroupConfirm = document.getElementById("createGroupConfirm");
+      const createGroupCancel = document.getElementById("createGroupCancel");
+      const groupNomInput = document.getElementById("groupNomInput");
+      const groupDescInput = document.getElementById("groupDescInput");
+
+      const inviteModal = document.getElementById("inviteModal");
+      const inviteSelect = document.getElementById("inviteSelect");
+      const inviteConfirm = document.getElementById("inviteConfirm");
+      const inviteCancel = document.getElementById("inviteCancel");
+
+      let currentGroupId = null;
+      let unsubscribeMessages = null; // pour stopper l'écoute quand on change de groupe
+
+      // 4. AFFICHER MES GROUPES EN DIRECT
+      // On écoute tous les groupes où je suis membre
+      const groupsQuery = query(
+        collection(db, "groups"),
+        where("membres", "array-contains", user.username)
+      );
+
+      onSnapshot(groupsQuery, snapshot => {
+        groupListDiv.innerHTML = "";
+        if (snapshot.empty) {
+          groupListDiv.innerHTML = `<p class="text-gray-400 text-center mt-6 text-sm">Tu n'es dans aucun groupe. Crée-en un 👇</p>`;
+        }
+
+        snapshot.forEach(docSnap => {
+          const g = docSnap.data();
+          const div = document.createElement("div");
+          div.className = "bg-gray-700 p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition flex flex-col";
+          div.innerHTML = `
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="font-semibold text-indigo-300">${g.nom}</p>
+                <p class="text-gray-400 text-xs">${g.description || "Aucune description"}</p>
+              </div>
+              <span class="text-[10px] text-gray-400">${g.membres.length} membre(s)</span>
+            </div>
+            <button class="mt-2 bg-indigo-600 hover:bg-indigo-700 text-xs px-2 py-1 rounded-md self-end openGroupBtn" data-id="${docSnap.id}">
+              Ouvrir
+            </button>
+          `;
+          groupListDiv.appendChild(div);
+        });
+
+        // bouton "Ouvrir" pour chaque groupe
+        document.querySelectorAll(".openGroupBtn").forEach(btn => {
+          btn.addEventListener("click", e => {
+            const gid = e.target.getAttribute("data-id");
+            ouvrirGroupe(gid);
+          });
+        });
+      });
+
+      // 5. OUVRIR UN GROUPE (chargement header + chat)
+      async function ouvrirGroupe(groupId) {
+        currentGroupId = groupId;
+
+        // header du groupe
+        const gRef = doc(db, "groups", groupId);
+        const gSnap = await getDoc(gRef);
+        if (!gSnap.exists()) {
+          groupNameEl.textContent = "Groupe introuvable";
+          groupDescEl.textContent = "";
+          groupMembersEl.textContent = "";
+          groupMessagesDiv.innerHTML = `<p class="text-gray-500 text-center mt-10">Ce groupe n'existe plus…</p>`;
+          return;
+        }
+        const gData = gSnap.data();
+        groupNameEl.textContent = gData.nom;
+        groupDescEl.textContent = gData.description || "";
+        groupMembersEl.textContent = `Membres : ${gData.membres.join(", ")}`;
+
+        // activer le chat du groupe
+        groupMessageInput.disabled = false;
+        groupChatForm.querySelector("button[type='submit']").disabled = false;
+        inviteBtn.disabled = false;
+
+        // stopper l'écoute des anciens messages si on change de groupe
+        if (unsubscribeMessages) unsubscribeMessages();
+
+        // écoute temps réel des messages de ce groupe
+        const msgsQuery = query(
+          collection(db, "group_messages"),
+          where("groupId", "==", groupId),
+          orderBy("timestamp")
+        );
+
+        unsubscribeMessages = onSnapshot(msgsQuery, snap => {
+          groupMessagesDiv.innerHTML = "";
+          if (snap.empty) {
+            groupMessagesDiv.innerHTML = `<p class="text-gray-500 text-center mt-10">Aucun message encore. Commence la discussion 😎</p>`;
+          } else {
+            snap.forEach(mDoc => {
+              const m = mDoc.data();
+              const line = document.createElement("div");
+              line.className = "bg-gray-700 p-2 rounded-md text-sm";
+              line.innerHTML = `<strong class="text-indigo-400">${m.user}</strong>: ${m.text}`;
+              groupMessagesDiv.appendChild(line);
+            });
+            groupMessagesDiv.scrollTop = groupMessagesDiv.scrollHeight;
+          }
+        });
+      }
+
+      // 6. ENVOI MESSAGE GROUPE
+      groupChatForm.addEventListener("submit", async e => {
+        e.preventDefault();
+        const text = groupMessageInput.value.trim();
+        if (!text || !currentGroupId) return;
+        await addDoc(collection(db, "group_messages"), {
+          groupId: currentGroupId,
+          user: user.username,
+          text,
+          timestamp: serverTimestamp()
+        });
+        groupMessageInput.value = "";
+      });
+
+      // 7. CRÉATION DE GROUPE
+      newGroupBtn.addEventListener("click", () => {
+        groupNomInput.value = "";
+        groupDescInput.value = "";
+        createGroupModal.classList.remove("hidden");
+      });
+
+      createGroupCancel.addEventListener("click", () => {
+        createGroupModal.classList.add("hidden");
+      });
+
+      createGroupConfirm.addEventListener("click", async () => {
+        const nom = groupNomInput.value.trim();
+        const desc = groupDescInput.value.trim();
+        if (!nom) {
+          alert("Le groupe doit avoir un nom.");
+          return;
+        }
+        // crée le groupe avec toi comme admin + seul membre au début
+        const newGroupRef = await addDoc(collection(db, "groups"), {
+          nom,
+          description: desc,
+          admin: user.username,
+          membres: [user.username]
+        });
+
+        createGroupModal.classList.add("hidden");
+        // ouvre direct le groupe après création
+        ouvrirGroupe(newGroupRef.id);
+      });
+
+      // 8. INVITER UN AMI DANS LE GROUPE
+      inviteBtn.addEventListener("click", async () => {
+        if (!currentGroupId) return;
+        // charger mes amis depuis Firestore
+        const meSnapNow = await getDoc(meRef);
+        const meData = meSnapNow.data();
+        const mesAmis = meData.amis || [];
+
+        // charger les membres actuels du groupe
+        const gSnap = await getDoc(doc(db, "groups", currentGroupId));
+        const gData = gSnap.data();
+        const deja = gData.membres || [];
+
+        // liste des amis pas encore dans le groupe
+        const candidats = mesAmis.filter(a => !deja.includes(a));
+
+        inviteSelect.innerHTML = "";
+        if (candidats.length === 0) {
+          inviteSelect.innerHTML = `<option value="">Aucun ami dispo 😢</option>`;
+        } else {
+          candidats.forEach(pseudo => {
+            const opt = document.createElement("option");
+            opt.value = pseudo;
+            opt.textContent = pseudo;
+            inviteSelect.appendChild(opt);
+          });
+        }
+
+        inviteModal.classList.remove("hidden");
+      });
+
+      inviteCancel.addEventListener("click", () => {
+        inviteModal.classList.add("hidden");
+      });
+
+      inviteConfirm.addEventListener("click", async () => {
+        const cible = inviteSelect.value;
+        if (!cible || !currentGroupId) {
+          alert("Choisis un ami.");
+          return;
+        }
+
+        // Ajoute l'ami dans le groupe (membres arrayUnion)
+        const gRef = doc(db, "groups", currentGroupId);
+        await updateDoc(gRef, {
+          membres: arrayUnion(cible)
+        });
+
+        alert(`✅ ${cible} a été ajouté au groupe !`);
+        inviteModal.classList.add("hidden");
+
+        // recharge header du groupe pour voir le nouveau membre
+        ouvrirGroupe(currentGroupId);
+      });
+
+      // 9. Déconnexion
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        localStorage.removeItem("connectedUser");
+        window.location.href = "index.html";
+      });
+    });
+  </script>
+
+</body>
+</html>

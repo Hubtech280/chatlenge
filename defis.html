@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Défis | Chatlenge</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans min-h-screen flex flex-col">
+
+  <nav class="flex justify-between items-center p-4 bg-gray-800 shadow-md">
+    <h1 class="text-2xl font-bold text-indigo-400 cursor-pointer" onclick="window.location.href='index.html'">Chatlenge</h1>
+    <div class="space-x-3">
+      <button onclick="window.location.href='profil.html'" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded-md">Profil</button>
+      <button onclick="window.location.href='classement.html'" class="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-md">Classement</button>
+    </div>
+  </nav>
+
+  <main class="flex-grow max-w-3xl mx-auto w-full p-6 space-y-6">
+    <div class="flex justify-between items-center">
+      <h2 class="text-3xl font-bold text-indigo-400">Défis en cours</h2>
+      <button id="newDefi" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold">Nouveau défi</button>
+    </div>
+    <div id="defiList" class="space-y-4"></div>
+  </main>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('connectedUser'));
+    if (!user) window.location.href = "login.html";
+
+    function loadDefis() {
+      const defis = JSON.parse(localStorage.getItem('defis') || '[]');
+      const container = document.getElementById('defiList');
+      container.innerHTML = '';
+
+      if (defis.length === 0) {
+        container.innerHTML = '<p class="text-gray-400">Aucun défi pour le moment.</p>';
+        return;
+      }
+
+      defis.forEach(defi => {
+        const div = document.createElement('div');
+        div.className = "bg-gray-800 p-4 rounded-lg shadow flex justify-between items-center";
+        div.innerHTML = `
+          <div>
+            <h3 class="font-bold text-lg text-indigo-400">${defi.titre}</h3>
+            <p class="text-gray-300">Créé par ${defi.createur} • ${defi.difficulte}</p>
+          </div>
+          <button class="px-3 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-lg" onclick="participer('${defi.id}')">Participer</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    document.getElementById('newDefi').addEventListener('click', () => {
+      const titre = prompt("Titre du défi :");
+      if (!titre) return;
+      const difficulte = prompt("Difficulté (Facile, Moyen, Difficile) :") || "Moyen";
+      const recompense = parseInt(prompt("Récompense en points :")) || 100;
+
+      const defis = JSON.parse(localStorage.getItem('defis') || '[]');
+      const newDefi = {
+        id: "defi_" + Date.now(),
+        titre,
+        createur: user.username,
+        difficulte,
+        recompense,
+        status: "actif",
+        participants: [],
+        tempsLimite: 60000
+      };
+      defis.push(newDefi);
+      localStorage.setItem('defis', JSON.stringify(defis));
+      loadDefis();
+    });
+
+    function participer(id) {
+      const defis = JSON.parse(localStorage.getItem('defis') || '[]');
+      const defi = defis.find(d => d.id === id);
+      if (!defi) return;
+      if (defi.participants.includes(user.email)) {
+        alert("Tu participes déjà à ce défi !");
+        return;
+      }
+      defi.participants.push(user.email);
+      localStorage.setItem('defis', JSON.stringify(defis));
+      alert("Tu participes au défi !");
+    }
+
+    loadDefis();
+  </script>
+</body>
+</html>

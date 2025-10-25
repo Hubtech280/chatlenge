@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<body style="background:#111;color:#fff;font-family:sans-serif;padding:20px">
+  <h2>Initialiser owner Chatlenge</h2>
+  <label>Email owner (gmail): <input id="email" value="chrismichelreby@gmail.com" style="width:300px"/></label><br/><br/>
+  <label>Secret owner (garde-le secret): <input id="secret" value="ChatyAndHolo" style="width:300px"/></label><br/><br/>
+  <button id="run">Initialiser</button>
+  <pre id="out" style="background:#222;padding:10px;"></pre>
+<script>
+document.getElementById('run').addEventListener('click', async ()=>{
+  const ownerEmail = document.getElementById('email').value.trim();
+  const ownerSecret = document.getElementById('secret').value;
+  if(!ownerEmail || !ownerSecret){ alert('Remplis tout'); return; }
+  function toHex(buffer){ const bytes = new Uint8Array(buffer); return Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+  async function sha256Hex(text){ const enc=new TextEncoder(); const data=enc.encode(text); const hash=await crypto.subtle.digest('SHA-256',data); return toHex(hash); }
+  function genSaltHex(len=16){ const arr=new Uint8Array(len); crypto.getRandomValues(arr); return Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join(''); }
+  const ownerSalt = genSaltHex(16);
+  const ownerHash = await sha256Hex(ownerSecret + ownerSalt);
+  const obj = { email: ownerEmail, salt: ownerSalt, hash: ownerHash };
+  localStorage.setItem('chatlenge_owner', JSON.stringify(obj));
+  document.getElementById('out').textContent = 'Owner initialisé : ' + JSON.stringify(obj, null, 2) + '\n\nTu peux maintenant fermer cette page.';
+});
+</script>
+</body>
+</html>

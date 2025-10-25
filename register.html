@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inscription | Chatlenge</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white font-sans flex flex-col items-center justify-center min-h-screen">
+
+  <h1 class="text-4xl font-extrabold text-indigo-400 mb-8">Chatlenge</h1>
+
+  <div class="bg-gray-800 p-8 rounded-2xl shadow-xl w-96">
+    <h2 class="text-2xl font-bold mb-4 text-center">Inscription</h2>
+
+    <form id="registerForm" class="space-y-3">
+      <input type="text" id="username" placeholder="Pseudo" class="w-full p-3 rounded-lg bg-gray-700 text-white" maxlength="30" />
+      <input type="email" id="email" placeholder="Email (gmail seulement)" class="w-full p-3 rounded-lg bg-gray-700 text-white" />
+      <input type="password" id="password" placeholder="Mot de passe" class="w-full p-3 rounded-lg bg-gray-700 text-white" />
+      <p id="pwHelp" class="text-sm text-gray-400">Min 10 caractères, majuscule, minuscule, chiffre et caractère spécial.</p>
+
+      <button type="submit" class="w-full py-3 bg-indigo-500 hover:bg-indigo-600 rounded-lg font-semibold transition">
+        S'inscrire
+      </button>
+    </form>
+
+    <p id="error" class="text-red-400 text-center mt-3 hidden"></p>
+
+    <p class="text-gray-400 text-center mt-4 text-sm">
+      Déjà un compte ?
+      <a href="login.html" class="text-indigo-400 hover:underline">Connecte-toi</a>
+    </p>
+  </div>
+
+  <script>
+    // Helpers
+    function toHex(buffer) {
+      const bytes = new Uint8Array(buffer);
+      return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    async function sha256Hex(text) {
+      const enc = new TextEncoder();
+      const data = enc.encode(text);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return toHex(hash);
+    }
+    function genSaltHex(length = 16) {
+      const arr = new Uint8Array(length);
+      crypto.getRandomValues(arr);
+      return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+    function sanitizeUsername(name) {
+      return name.replace(/[<>]/g, '');
+    }
+    function validPassword(pw) {
+      if (pw.length < 10) return false;
+      if (!/[A-Z]/.test(pw)) return false;
+      if (!/[a-z]/.test(pw)) return false;
+      if (!/[0-9]/.test(pw)) return false;
+      if (!/[^A-Za-z0-9]/.test(pw)) return false;
+      return true;
+    }
+    function validGmail(email) {
+      return /^[^\s@]+@(?:gmail\.com|googlemail\.com)$/i.test(email);
+    }
+
+    // Registration logic
+    const form = document.getElementById('registerForm');
+    const errorP = document.getElementById('error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorP.classList.add('hidden');
+      errorP.textContent = '';
+
+      const rawUser = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
+
+      if (!rawUser || !email || !password) {
+        errorP.textContent = 'Remplis tous les champs.';
+        errorP.classList.remove('hidden');
+        return;
+      }
+
+      if (!validGmail(email)) {
+        errorP.textContent = 'Utilise une adresse Google (example@gmail.com).';
+        errorP.classList.remove('hidden');
+        return;
+      }
+
+      if (!validPassword(password)) {
+        errorP.textContent = 'Mot de passe trop faible — respecte les règles indiquées.';
+        errorP.classList.remove('hidden');
+        return;
+      }
+
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      if (users.find(u => u.email === email)) {
+        errorP.textContent = 'Un compte avec cet email existe déjà.';
+        errorP.classList.remove('hidden');
+        return;
+      }
+
+      const salt = genSaltHex(16);
+      const hashed = await sha256Hex(password + salt);
+
+      const username = sanitizeUsername(rawUser);
+
+      users.push({ username, email, salt, hash: hashed, points: 0, isAdmin: false });
+      localStorage.setItem('users', JSON.stringify(users));
+
+      alert('Compte créé avec succès ! Tu peux maintenant te connecter.');
+      window.location.href = 'login.html';
+    });
+  </script>
+</body>
+</html>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  // === CONFIG FIREBASE (mets la même que dans chat.html) ===
+   const firebaseConfig = {
+    apiKey: "AIzaSyCj5WZ9CLQs8syiptj8YuYe2qUN2JuXzPU",
+    authDomain: "chatlenge-713ad.firebaseapp.com",
+    projectId: "chatlenge-713ad",
+    storageBucket: "chatlenge-713ad.firebasestorage.app",
+    messagingSenderId: "186225402929",
+    appId: "1:186225402929:web:00c68622f68aac5ba12110"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  document.getElementById("registerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const username = document.getElementById("username").value.trim();
+    const email = document.getElementById("email").value.trim().toLowerCase();
+    const password = document.getElementById("password").value;
+
+    if (!username || !email || !password) {
+      alert("Remplis tous les champs !");
+      return;
+    }
+
+    // Création locale
+    const users = JSON.parse(localStorage.getItem("users") || "[]");
+    if (users.some(u => u.email === email)) {
+      alert("Cet email est déjà utilisé !");
+      return;
+    }
+
+    const newUser = { username, email, password, points: 0 };
+    users.push(newUser);
+    localStorage.setItem("users", JSON.stringify(users));
+    localStorage.setItem("connectedUser", JSON.stringify(newUser));
+
+    // Ajout à Firebase
+    await setDoc(doc(db, "users", email), {
+      username,
+      email,
+      points: 0
+    });
+
+    window.location.href = "chat.html";
+  });
+ </script>
+</body>
+</html>

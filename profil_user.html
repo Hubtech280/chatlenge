@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatlenge — Profil joueur</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+  <nav class="flex justify-between items-center p-4 bg-gray-800 shadow-md">
+    <h1 class="text-2xl font-bold text-indigo-400 cursor-pointer" onclick="window.location.href='chat.html'">⬅ Retour</h1>
+  </nav>
+
+  <main class="flex-1 flex flex-col items-center justify-center p-6">
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md text-center">
+      <h2 class="text-2xl font-bold text-indigo-400 mb-4">👤 Profil de <span id="username"></span></h2>
+      <img id="profilPhoto" src="default.jpg" alt="Photo" class="w-32 h-32 rounded-full object-cover mx-auto mb-3 border-4 border-indigo-500" />
+      <p id="bio" class="text-gray-300 italic mb-4"></p>
+      <div id="infos" class="text-gray-400 space-y-1"></div>
+
+      <button id="sendDM" class="bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-md mt-4">💬 Envoyer un message</button>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCj5WZ9CLQs8syiptj8YuYe2qUN2JuXzPU",
+    authDomain: "chatlenge-713ad.firebaseapp.com",
+    projectId: "chatlenge-713ad",
+    storageBucket: "chatlenge-713ad.firebasestorage.app",
+    messagingSenderId: "186225402929",
+    appId: "1:186225402929:web:00c68622f68aac5ba12110"
+  };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const params = new URLSearchParams(window.location.search);
+    const username = params.get("user");
+    const usernameEl = document.getElementById("username");
+    const profilPhoto = document.getElementById("profilPhoto");
+    const bio = document.getElementById("bio");
+    const infos = document.getElementById("infos");
+
+    if (!username) {
+      document.body.innerHTML = "<h1 class='text-center text-red-400 mt-20'>Utilisateur introuvable</h1>";
+      throw new Error("Aucun pseudo fourni");
+    }
+
+    usernameEl.textContent = username;
+
+    const userRef = doc(db, "users", username);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      profilPhoto.src = data.photo || "default.jpg";
+      bio.textContent = data.bio || "Aucune bio disponible.";
+      infos.innerHTML = `
+        <p><strong>Rôle :</strong> ${data.role || "user"}</p>
+        <p><strong>Points :</strong> ${data.points || 0}</p>
+      `;
+    } else {
+      bio.textContent = "Ce joueur n'existe pas ou a supprimé son compte.";
+    }
+
+    // Redirection DM
+    document.getElementById("sendDM").addEventListener("click", () => {
+      window.location.href = `dm.html?to=${username}`;
+    });
+  </script>
+</body>
+</html>

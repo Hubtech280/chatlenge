@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatlenge | Défis et Chat</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans flex flex-col min-h-screen">
+
+  <!-- Barre de navigation -->
+  <nav class="flex justify-between items-center p-4 bg-gray-800 shadow-md">
+    <h1 class="text-3xl font-bold text-indigo-400 cursor-pointer" onclick="window.location.href='index.html'">
+      Chatlenge 💬
+    </h1>
+    <div id="navActions" class="space-x-3">
+      <!-- Les boutons seront générés dynamiquement -->
+    </div>
+  </nav>
+
+  <!-- Contenu principal -->
+  <main class="flex-grow flex flex-col items-center justify-center text-center px-6">
+    <h2 class="text-4xl md:text-5xl font-bold mb-4 text-indigo-400">Bienvenue sur Chatlenge</h2>
+    <p class="text-lg text-gray-300 max-w-2xl mb-6">
+      Discute, lance des défis à tes amis, grimpe dans le classement, et deviens une légende 💪
+    </p>
+    <div id="mainButtons" class="space-x-4">
+      <!-- Les boutons principaux changent selon la connexion -->
+    </div>
+  </main>
+
+  <!-- Pied de page -->
+  <footer class="bg-gray-800 text-gray-400 py-4 text-center">
+    © 2025 Chatlenge — Créé par Holotech 🔥
+  </footer>
+
+  <script>
+    const navActions = document.getElementById('navActions');
+    const mainButtons = document.getElementById('mainButtons');
+    const user = JSON.parse(localStorage.getItem('connectedUser'));
+
+    if (user) {
+      // === Utilisateur connecté ===
+      navActions.innerHTML = `
+        <span class="text-indigo-300 font-semibold">Connecté en tant que ${user.username}</span>
+        <button id="chatBtn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium">Chat</button>
+        <button id="logoutBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-medium">Déconnexion</button>
+      `;
+
+      mainButtons.innerHTML = `
+        <button onclick="window.location.href='chat.html'" class="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-semibold text-lg">Accéder au Chat</button>
+        <button onclick="window.location.href='defis.html'" class="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 rounded-xl font-semibold text-lg">Voir les Défis</button>
+      `;
+
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        let list = JSON.parse(localStorage.getItem("connectedUsersList") || "[]");
+        list = list.filter(u => u.email !== user.email);
+        localStorage.setItem("connectedUsersList", JSON.stringify(list));
+        localStorage.removeItem('connectedUser');
+        window.location.reload();
+      });
+
+      document.getElementById('chatBtn').addEventListener('click', () => {
+        window.location.href = 'chat.html';
+      });
+
+    } else {
+      // === Utilisateur non connecté ===
+      navActions.innerHTML = `
+        <button onclick="window.location.href='login.html'" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-lg font-medium">Connexion</button>
+        <button onclick="window.location.href='register.html'" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-medium">Inscription</button>
+      `;
+
+      mainButtons.innerHTML = `
+        <button onclick="window.location.href='login.html'" class="px-6 py-3 bg-indigo-500 hover:bg-indigo-600 rounded-xl font-semibold text-lg">Se connecter</button>
+        <button onclick="window.location.href='register.html'" class="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-xl font-semibold text-lg">Créer un compte</button>
+      `;
+    }
+  </script>
+</body>
+</html>
+

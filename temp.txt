@@ -1,0 +1,8 @@
+  const firebaseConfig = {
+    apiKey: "AIzaSyCj5WZ9CLQs8syiptj8YuYe2qUN2JuXzPU",
+    authDomain: "chatlenge-713ad.firebaseapp.com",
+    projectId: "chatlenge-713ad",
+    storageBucket: "chatlenge-713ad.firebasestorage.app",
+    messagingSenderId: "186225402929",
+    appId: "1:186225402929:web:00c68622f68aac5ba12110"
+  };

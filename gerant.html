@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatlenge — Gérant 👑</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+  <nav class="flex justify-between items-center p-4 bg-indigo-900 shadow-md">
+    <h1 class="text-2xl font-bold text-yellow-400">Panneau Gérant 👑</h1>
+    <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-3 py-2 rounded-md">Déconnexion</button>
+  </nav>
+
+  <main class="flex-1 p-6 max-w-6xl mx-auto">
+    <h2 class="text-2xl font-bold text-indigo-300 mb-6">👥 Utilisateurs</h2>
+    <div id="usersList" class="space-y-3"></div>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { 
+      getFirestore, collection, getDocs, doc, updateDoc, deleteDoc
+    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCj5WZ9CLQs8syiptj8YuYe2qUN2JuXzPU",
+    authDomain: "chatlenge-713ad.firebaseapp.com",
+    projectId: "chatlenge-713ad",
+    storageBucket: "chatlenge-713ad.firebasestorage.app",
+    messagingSenderId: "186225402929",
+    appId: "1:186225402929:web:00c68622f68aac5ba12110"
+  };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const user = JSON.parse(localStorage.getItem("connectedUser"));
+    if (!user) window.location.href = "login.html";
+
+    // Protection : seul Holotech
+    if (user.username !== "Holotech") {
+      alert("Accès refusé !");
+      window.location.href = "index.html";
+    }
+
+    const usersList = document.getElementById("usersList");
+    const usersData = await getDocs(collection(db, "users"));
+    usersList.innerHTML = "";
+
+    usersData.forEach(docSnap => {
+      const u = docSnap.data();
+      const div = document.createElement("div");
+      div.className = "bg-gray-800 p-4 rounded-md flex justify-between items-center";
+      div.innerHTML = `
+        <div>
+          <p class="font-semibold text-indigo-300">${u.username}</p>
+          <p class="text-gray-400 text-xs">${u.email}</p>
+          <p class="text-gray-400 text-xs">Rôle: ${u.role || "user"} | Points: ${u.points || 0}</p>
+        </div>
+        <div class="space-x-2">
+          <button class="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs promote" data-id="${u.username}">Admin</button>
+          <button class="bg-yellow-600 hover:bg-yellow-700 px-2 py-1 rounded text-xs demote" data-id="${u.username}">User</button>
+          <button class="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-xs addPoints" data-id="${u.username}">+100</button>
+          <button class="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs deleteUser" data-id="${u.username}">🗑️</button>
+        </div>
+      `;
+      usersList.appendChild(div);
+    });
+
+    // Promotion / rétrogradation
+    document.querySelectorAll(".promote").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        const pseudo = e.target.dataset.id;
+        const ref = doc(db, "users", pseudo);
+        await updateDoc(ref, { role: "admin" });
+        alert(`${pseudo} promu admin`);
+      });
+    });
+
+    document.querySelectorAll(".demote").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        const pseudo = e.target.dataset.id;
+        const ref = doc(db, "users", pseudo);
+        await updateDoc(ref, { role: "user" });
+        alert(`${pseudo} redevenu user`);
+      });
+    });
+
+    document.querySelectorAll(".addPoints").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        const pseudo = e.target.dataset.id;
+        const ref = doc(db, "users", pseudo);
+        const snapshot = await getDocs(collection(db, "users"));
+        const udata = snapshot.docs.find(d => d.id === pseudo)?.data() || {};
+        const newPoints = (udata.points || 0) + 100;
+        await updateDoc(ref, { points: newPoints });
+        alert(`+100 points pour ${pseudo}`);
+      });
+    });
+
+    document.querySelectorAll(".deleteUser").forEach(btn => {
+      btn.addEventListener("click", async e => {
+        const pseudo = e.target.dataset.id;
+        if (!confirm(`Supprimer ${pseudo} ?`)) return;
+        await deleteDoc(doc(db, "users", pseudo));
+        alert(`${pseudo} supprimé.`);
+        window.location.reload();
+      });
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem("connectedUser");
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>

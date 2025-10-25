@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Connexion | Chatlenge</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white font-sans flex flex-col items-center justify-center min-h-screen">
+
+  <h1 class="text-4xl font-extrabold text-indigo-400 mb-8">Chatlenge</h1>
+
+  <div class="bg-gray-800 p-8 rounded-2xl shadow-xl w-96">
+    <h2 class="text-2xl font-bold mb-4 text-center">Connexion</h2>
+
+    <form id="loginForm" class="space-y-3">
+      <input type="email" id="email" placeholder="Email" class="w-full p-3 rounded-lg bg-gray-700 text-white" />
+      <input type="password" id="password" placeholder="Mot de passe" class="w-full p-3 rounded-lg bg-gray-700 text-white" />
+      <button type="submit" class="w-full py-3 bg-indigo-500 hover:bg-indigo-600 rounded-lg font-semibold transition">
+        Se connecter
+      </button>
+    </form>
+
+    <p id="error" class="text-red-400 text-center mt-3 hidden"></p>
+
+    <p class="text-gray-400 text-center mt-4 text-sm">
+      Pas encore de compte ?
+      <a href="register.html" class="text-indigo-400 hover:underline">Inscris-toi</a>
+    </p>
+  </div>
+
+  <script>
+    // Helpers
+    function toHex(buffer) {
+      const bytes = new Uint8Array(buffer);
+      return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    async function sha256Hex(text) {
+      const enc = new TextEncoder();
+      const data = enc.encode(text);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return toHex(hash);
+    }
+
+    // lock/ban helpers
+    function getLockInfo(email) {
+      const data = JSON.parse(localStorage.getItem('loginLocks') || '{}');
+      return data[email] || { attempts: 0, lockedUntil: 0 };
+    }
+    function setLockInfo(email, info) {
+      const data = JSON.parse(localStorage.getItem('loginLocks') || '{}');
+      data[email] = info;
+      localStorage.setItem('loginLocks', JSON.stringify(data));
+    }
+
+    const form = document.getElementById('loginForm');
+    const errorP = document.getElementById('error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorP.classList.add('hidden');
+      errorP.textContent = '';
+
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        errorP.textContent = 'Remplis tous les champs.';
+        errorP.classList.remove('hidden');
+        return;
+      }
+
+      // Check bans first
+      const banned = JSON.parse(localStorage.getItem('bannedUsers') || '[]');
+      const foundBan = banned.find(b => b.email === email);
+      if (foundBan) {
+        if (foundBan.type === 'perm') {
+          alert("Tu es banni définitivement de Chatlenge.");
+          return;
+        } else if (Date.now() < foundBan.until) {
+          const remaining = Math.ceil((foundBan.until - Date.now()) / 60000);
+          alert(`Tu es temporairement banni (${remaining} min restantes).`);
+          return;
+        } else {
+          // ban expired -> remove it
+          localStorage.setItem('bannedUsers', JSON.stringify(banned.filter(b => b.email !== email)));
+        }
+      }
+
+      const lock = getLockInfo(email);
+      const now = Date.now();
+      if (lock.lockedUntil && now < lock.lockedUntil) {
+        const remaining = Math.ceil((lock.lockedUntil - now) / 1000);
+        errorP.textContent = `Trop d'essais. Réessaye dans ${remaining} secondes.`;
+        errorP.classList.remove('hidden');
+        return;
+      }
+
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const user = users.find(u => u.email === email);
+
+      if (!user) {
+        handleFailedAttempt(email);
+        errorP.textContent = 'Identifiants incorrects.';
+        errorP.classList.remove('hidden');
+        return;
+      }
+
+      const hashed = await sha256Hex(password + user.salt);
+      if (hashed !== user.hash) {
+        handleFailedAttempt(email);
+        errorP.textContent = 'Identifiants incorrects.';
+        errorP.classList.remove('hidden');
+        return;
+      }
+
+      setLockInfo(email, { attempts: 0, lockedUntil: 0 });
+
+      const safeUser = { username: user.username, email: user.email, points: user.points || 0, isAdmin: !!user.isAdmin };
+      localStorage.setItem('connectedUser', JSON.stringify(safeUser));
+
+      // add to connectedUsersList
+      const connectedList = JSON.parse(localStorage.getItem("connectedUsersList") || "[]");
+      if (!connectedList.find(u => u.email === safeUser.email)) {
+        connectedList.push(safeUser);
+      }
+      localStorage.setItem("connectedUsersList", JSON.stringify(connectedList));
+
+      // Owner check data
+      const owner = JSON.parse(localStorage.getItem('chatlenge_owner') || 'null');
+
+      if (safeUser.username === "Holotech" && owner && safeUser.email === owner.email) {
+        const provided = prompt("Entrez le mot de passe spécial du gérant :");
+        if (!provided) {
+          alert("Accès gérant annulé. Tu es redirigé vers le chat.");
+          window.location.href = "chat.html";
+          return;
+        }
+        const providedHash = await sha256Hex(provided + owner.salt);
+        if (providedHash === owner.hash) {
+          window.location.href = "gerant.html";
+          return;
+        } else {
+          alert("Mot de passe spécial incorrect. Tu es redirigé vers le chat.");
+          window.location.href = "chat.html";
+          return;
+        }
+      }
+
+      if (safeUser.isAdmin) {
+        window.location.href = "admin.html";
+      } else {
+        window.location.href = "chat.html";
+      }
+    });
+
+    function handleFailedAttempt(email) {
+      const lock = getLockInfo(email);
+      lock.attempts = (lock.attempts || 0) + 1;
+      if (lock.attempts >= 5) {
+        lock.lockedUntil = Date.now() + 5 * 60 * 1000; // 5 minutes
+        lock.attempts = 0;
+      }
+      setLockInfo(email, lock);
+    }
+  </script>
+</body>
+</html>
